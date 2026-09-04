@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   formatDueDate,
   getDueBucket,
+  getNextOccurrence,
   groupTodosByDueDate,
   isDueTodayOrOverdue,
   isOverdue,
   parseTitleWithDueDate,
   toISODate,
 } from "./date-utils";
-import { Todo } from "./types";
+import { RepeatRule, Todo } from "./types";
 
 // Friday, September 4, 2026.
 const NOW = new Date(2026, 8, 4);
@@ -143,5 +144,39 @@ describe("parseTitleWithDueDate", () => {
     const result = parseTitleWithDueDate("Morgen", NOW);
     expect(result.title).toBe("Morgen");
     expect(result.dueDate).toBeUndefined();
+  });
+});
+
+describe("getNextOccurrence", () => {
+  it("advances by day/week/month/year", () => {
+    const daily: RepeatRule = { unit: "day", interval: 1 };
+    const biweekly: RepeatRule = { unit: "week", interval: 2 };
+    const monthly: RepeatRule = { unit: "month", interval: 1 };
+    const yearly: RepeatRule = { unit: "year", interval: 1 };
+
+    expect(toISODate(getNextOccurrence(NOW, daily, NOW))).toBe(toISODate(new Date(2026, 8, 5)));
+    expect(toISODate(getNextOccurrence(NOW, biweekly, NOW))).toBe(toISODate(new Date(2026, 8, 18)));
+    expect(toISODate(getNextOccurrence(NOW, monthly, NOW))).toBe(toISODate(new Date(2026, 9, 4)));
+    expect(toISODate(getNextOccurrence(NOW, yearly, NOW))).toBe(toISODate(new Date(2027, 8, 4)));
+  });
+
+  it("keeps advancing past due dates that are more than one interval overdue", () => {
+    const aug1 = new Date(2026, 7, 1);
+    const daily: RepeatRule = { unit: "day", interval: 1 };
+    const weekly: RepeatRule = { unit: "week", interval: 1 };
+
+    // A single +1 day/+1 week hop from Aug 1 would still be overdue relative
+    // to NOW (Sept 4) — both should catch up to the day right after NOW.
+    expect(toISODate(getNextOccurrence(aug1, daily, NOW))).toBe(toISODate(new Date(2026, 8, 5)));
+    expect(toISODate(getNextOccurrence(aug1, weekly, NOW))).toBe(toISODate(new Date(2026, 8, 5)));
+  });
+
+  it("documents JS's native month-overflow rollover rather than clamping", () => {
+    const jan31 = new Date(2026, 0, 31);
+    const monthly: RepeatRule = { unit: "month", interval: 1 };
+
+    // Jan 31 + 1 month overflows February into March 3, rather than
+    // clamping to Feb 28. Known, accepted limitation (see date-utils.ts).
+    expect(toISODate(getNextOccurrence(jan31, monthly, jan31))).toBe(toISODate(new Date(2026, 2, 3)));
   });
 });

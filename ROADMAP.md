@@ -7,13 +7,13 @@ Ideas for where this extension could go next, beyond the initial spec. Nothing h
 - `list-todos`, `quick-add-todo` (with DE/EN natural-language due dates), `menu-bar-todos`, `manage-projects`
 - Local `LocalStorage` CRUD layer with a `migrate()` hook for future schema changes
 - Unit tests for the logic layer, CI, Dependabot
+- Recurring todos — a repeat rule (day/week/month/year, with a custom interval) on a `Todo`; completing an instance spawns the next occurrence with an advanced due date
 
 ## Local-only
 
 These fit the current architecture (everything in `LocalStorage`, no server) and are the natural next step.
 
 - **Export/import** — a command to dump all todos/projects to JSON and read them back. The only backup story right now is "don't clear LocalStorage"; this is cheap insurance and worth doing first.
-- **Recurring todos** — a repeat rule (daily/weekly/custom) on a `Todo`; completing an instance spawns the next occurrence with a new due date.
 - **Completed/archive view** — completed todos currently disappear with no way to see or undo them. A toggle or second view closes that gap.
 - **Snooze action** — "postpone to tomorrow" as a single keystroke in `list-todos`, reusing the date parser already built for quick-add.
 - **Sort/filter options** — by priority or project, in addition to the existing due-date grouping.

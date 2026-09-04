@@ -1,6 +1,7 @@
 import { Color, LocalStorage } from "@raycast/api";
 import { randomUUID } from "node:crypto";
-import { INBOX_PROJECT_ID, Priority, Project, Todo } from "./types";
+import { getNextOccurrence, toISODate } from "./date-utils";
+import { INBOX_PROJECT_ID, Priority, Project, RepeatRule, Todo } from "./types";
 
 const TODOS_KEY = "todos-v1";
 const PROJECTS_KEY = "projects-v1";
@@ -97,6 +98,7 @@ export interface NewTodoInput {
   projectId?: string;
   priority?: Priority;
   dueDate?: string;
+  repeat?: RepeatRule;
 }
 
 export async function addTodo(input: NewTodoInput): Promise<Todo> {
@@ -108,6 +110,7 @@ export async function addTodo(input: NewTodoInput): Promise<Todo> {
     projectId: input.projectId ?? INBOX_PROJECT_ID,
     priority: input.priority ?? "medium",
     dueDate: input.dueDate,
+    repeat: input.repeat,
     completed: false,
     createdAt: new Date().toISOString(),
   };
@@ -122,6 +125,37 @@ export async function updateTodo(id: string, patch: Partial<Omit<Todo, "id" | "c
 
 export async function setTodoCompleted(id: string, completed: boolean): Promise<void> {
   await updateTodo(id, { completed, completedAt: completed ? new Date().toISOString() : undefined });
+}
+
+/**
+ * Marks a todo completed and, if it has both a repeat rule and a due date to
+ * anchor from, spawns the next occurrence as a new open todo. Returns the
+ * spawned todo, or `undefined` if nothing was spawned (not recurring, no
+ * matching todo, or a repeat rule with no due date to advance from).
+ */
+export async function completeTodo(id: string): Promise<Todo | undefined> {
+  const todos = await getTodos();
+  const target = todos.find((todo) => todo.id === id);
+  if (!target) return undefined;
+
+  const completedAt = new Date().toISOString();
+  const updated = todos.map((todo) => (todo.id === id ? { ...todo, completed: true, completedAt } : todo));
+
+  let spawned: Todo | undefined;
+  if (target.repeat && target.dueDate) {
+    spawned = {
+      ...target,
+      id: randomUUID(),
+      dueDate: toISODate(getNextOccurrence(new Date(target.dueDate), target.repeat)),
+      completed: false,
+      completedAt: undefined,
+      createdAt: new Date().toISOString(),
+    };
+    updated.push(spawned);
+  }
+
+  await saveTodos(updated);
+  return spawned;
 }
 
 export async function deleteTodo(id: string): Promise<void> {

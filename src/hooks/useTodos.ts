@@ -47,6 +47,17 @@ export function useTodos() {
     await storage.setTodoCompleted(id, completed);
   }, []);
 
+  const completeTodo = useCallback(async (id: string) => {
+    const spawned = await storage.completeTodo(id);
+    setTodos((prev) => {
+      const next = prev.map((todo) =>
+        todo.id === id ? { ...todo, completed: true, completedAt: new Date().toISOString() } : todo,
+      );
+      return spawned ? [...next, spawned] : next;
+    });
+    return spawned;
+  }, []);
+
   const removeTodo = useCallback(async (id: string) => {
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
     await storage.deleteTodo(id);
@@ -77,6 +88,7 @@ export function useTodos() {
     createTodo,
     editTodo,
     toggleTodoCompleted,
+    completeTodo,
     removeTodo,
     createProject,
     editProject,

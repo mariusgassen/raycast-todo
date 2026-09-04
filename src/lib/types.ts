@@ -1,5 +1,13 @@
 export type Priority = "low" | "medium" | "high";
 
+export type RepeatUnit = "day" | "week" | "month" | "year";
+
+export interface RepeatRule {
+  unit: RepeatUnit;
+  /** Repeat every N units (e.g. `{ unit: "week", interval: 2 }` = every 2 weeks). Must be >= 1. */
+  interval: number;
+}
+
 export const INBOX_PROJECT_ID = "inbox";
 
 export interface Project {
@@ -18,6 +26,7 @@ export interface Todo {
   projectId: string;
   priority: Priority;
   dueDate?: string;
+  repeat?: RepeatRule;
   completed: boolean;
   completedAt?: string;
   createdAt: string;
