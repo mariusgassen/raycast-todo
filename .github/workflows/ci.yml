@@ -26,7 +26,10 @@ jobs:
         run: npx eslint src
 
       - name: Check formatting
-        run: npx prettier --check "src/**/*.{ts,tsx}"
+        run: npx prettier --check "src/**/*.{ts,tsx}" "test/**/*.ts" "*.mts"
+
+      - name: Test
+        run: npm test
 
       - name: Build extension
         run: |

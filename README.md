@@ -23,6 +23,11 @@ npm install
 npm run dev     # ray develop — live-reloads in Raycast
 npm run build   # ray build
 npm run lint    # ray lint
+npm test        # vitest
 ```
+
+Tests cover the pure logic layer (`src/lib/date-utils.ts`, `src/lib/storage.ts`) — the due-date bucketing/formatting, the DE/EN natural-language date parser, and the `LocalStorage` CRUD layer, run against an in-memory stand-in for `@raycast/api` (`test/mocks/raycast-api.ts`), since the real package only ships types and has no runtime outside the Raycast host app. Commands themselves (the `.tsx` files) are exercised via `ray build`/`ray lint` plus manual review rather than automated tests, for the same reason.
+
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, format-check, tests and `ray build` on every push and pull request. Dependabot (`.github/dependabot.yml`) opens weekly PRs for npm and GitHub Actions dependency updates.
 
 > **Note:** before publishing, set `author` in `package.json` to your real Raycast Store username — `ray lint` validates it against your account and will reject a placeholder. Use `ray lint -r` (relaxed mode) to skip that check during local development if you don't have network access to Raycast's API.
