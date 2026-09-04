@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src
+
+      - name: Check formatting
+        run: npx prettier --check "src/**/*.{ts,tsx}"
+
+      - name: Build extension
+        run: |
+          # `ray build` tries to notify a running Raycast desktop app via
+          # `xdg-open` once the build finishes. No such app exists on this
+          # runner, and the CLI crashes on the missing `xdg-open` binary
+          # instead of exiting cleanly (a bug in the CLI's own notify step,
+          # unrelated to the extension's build output). A no-op stub keeps
+          # that irrelevant step from breaking the job.
+          mkdir -p .ci-bin
+          printf '#!/bin/sh\nexit 0\n' > .ci-bin/xdg-open
+          chmod +x .ci-bin/xdg-open
+          PATH="$PWD/.ci-bin:$PATH" npx ray build -e dist -I
