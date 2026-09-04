@@ -31,3 +31,7 @@ Tests cover the pure logic layer (`src/lib/date-utils.ts`, `src/lib/storage.ts`)
 CI (`.github/workflows/ci.yml`) runs typecheck, lint, format-check, tests and `ray build` on every push and pull request. Dependabot (`.github/dependabot.yml`) opens weekly PRs for npm and GitHub Actions dependency updates.
 
 > **Note:** before publishing, set `author` in `package.json` to your real Raycast Store username — `ray lint` validates it against your account and will reject a placeholder. Use `ray lint -r` (relaxed mode) to skip that check during local development if you don't have network access to Raycast's API.
+
+## Roadmap
+
+See [`ROADMAP.md`](./ROADMAP.md) for feature ideas beyond the initial spec (export/import, recurring todos, calendar sync, and more).
