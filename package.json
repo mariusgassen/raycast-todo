@@ -1,0 +1,73 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "todo",
+  "title": "Todo",
+  "description": "Manage your todos locally, right from Raycast. No external service required.",
+  "icon": "icon.png",
+  "author": "mariusgassen",
+  "categories": [
+    "Productivity"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "list-todos",
+      "title": "List Todos",
+      "subtitle": "Todo",
+      "description": "Browse, search and manage your open todos, grouped by due date.",
+      "mode": "view"
+    },
+    {
+      "name": "quick-add-todo",
+      "title": "Quick Add Todo",
+      "subtitle": "Todo",
+      "description": "Create a new todo instantly from a single line of text.",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "title",
+          "placeholder": "Buy milk tomorrow",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "menu-bar-todos",
+      "title": "Todos Menu Bar",
+      "subtitle": "Todo",
+      "description": "Shows open and overdue todo counts in the menu bar with quick access to what's due next.",
+      "mode": "menu-bar",
+      "interval": "10m"
+    },
+    {
+      "name": "manage-projects",
+      "title": "Manage Projects",
+      "subtitle": "Todo",
+      "description": "Create, edit and delete projects used to organize your todos.",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.2.0",
+    "@raycast/utils": "^2.3.1"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "eslint": "^10.10.0",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "test": "vitest run",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
