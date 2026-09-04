@@ -1,6 +1,7 @@
 import { LocalStorage } from "@raycast/api";
 import { beforeEach, describe, expect, it } from "vitest";
 import * as storage from "./storage";
+import { addDays, toISODate } from "./date-utils";
 import { INBOX_PROJECT_ID } from "./types";
 
 beforeEach(async () => {
@@ -67,6 +68,58 @@ describe("todos", () => {
     const todo = await storage.addTodo({ title: "Temp" });
     await storage.deleteTodo(todo.id);
     expect(await storage.getTodos()).toHaveLength(0);
+  });
+});
+
+describe("completeTodo", () => {
+  it("completes a non-recurring todo without spawning anything", async () => {
+    const todo = await storage.addTodo({ title: "One-off" });
+    const spawned = await storage.completeTodo(todo.id);
+
+    expect(spawned).toBeUndefined();
+    const todos = await storage.getTodos();
+    expect(todos).toHaveLength(1);
+    expect(todos[0]).toMatchObject({ id: todo.id, completed: true });
+  });
+
+  it("spawns the next occurrence for a recurring todo with a due date", async () => {
+    const dueDate = toISODate(addDays(new Date(), 30));
+    const todo = await storage.addTodo({
+      title: "Water plants",
+      dueDate,
+      repeat: { unit: "week", interval: 2 },
+    });
+
+    const spawned = await storage.completeTodo(todo.id);
+
+    expect(spawned).toBeDefined();
+    expect(spawned?.id).not.toBe(todo.id);
+    expect(spawned).toMatchObject({
+      title: "Water plants",
+      completed: false,
+      repeat: { unit: "week", interval: 2 },
+      dueDate: toISODate(addDays(new Date(dueDate), 14)),
+    });
+
+    const todos = await storage.getTodos();
+    expect(todos).toHaveLength(2);
+    expect(todos.find((t) => t.id === todo.id)).toMatchObject({ completed: true });
+  });
+
+  it("completes a recurring todo with no due date without spawning", async () => {
+    const todo = await storage.addTodo({ title: "No date", repeat: { unit: "day", interval: 1 } });
+    const spawned = await storage.completeTodo(todo.id);
+
+    expect(spawned).toBeUndefined();
+    expect(await storage.getTodos()).toHaveLength(1);
+  });
+
+  it("returns undefined for an unknown id and leaves storage untouched", async () => {
+    await storage.addTodo({ title: "Existing" });
+    const spawned = await storage.completeTodo("does-not-exist");
+
+    expect(spawned).toBeUndefined();
+    expect(await storage.getTodos()).toHaveLength(1);
   });
 });
 

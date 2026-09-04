@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Action, ActionPanel, Form, Icon, showToast, Toast, useNavigation } from "@raycast/api";
-import { INBOX_PROJECT_ID, Priority, Project, Todo } from "../lib/types";
+import { INBOX_PROJECT_ID, Priority, Project, RepeatRule, RepeatUnit, Todo } from "../lib/types";
 import { PRIORITIES, PRIORITY_COLORS, PRIORITY_ICONS, PRIORITY_LABELS } from "../lib/priority";
 import { DEFAULT_PROJECT_ICON } from "../lib/project-style";
+import { REPEAT_UNITS, REPEAT_UNIT_LABELS } from "../lib/repeat";
 import { toISODate } from "../lib/date-utils";
 
 export interface TodoFormSubmitValues {
@@ -11,7 +12,10 @@ export interface TodoFormSubmitValues {
   projectId: string;
   priority: Priority;
   dueDate?: string;
+  repeat?: RepeatRule;
 }
+
+type RepeatDropdownValue = RepeatUnit | "none";
 
 interface TodoFormValues {
   title: string;
@@ -19,6 +23,8 @@ interface TodoFormValues {
   projectId: string;
   priority: string;
   dueDate: Date | null;
+  repeatUnit: RepeatDropdownValue;
+  repeatInterval: string;
 }
 
 interface TodoFormProps {
@@ -31,12 +37,29 @@ export function TodoForm({ todo, projects, onSubmit }: TodoFormProps) {
   const { pop } = useNavigation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [titleError, setTitleError] = useState<string | undefined>();
+  const [dueDateError, setDueDateError] = useState<string | undefined>();
+  const [repeatIntervalError, setRepeatIntervalError] = useState<string | undefined>();
+  const [repeatUnit, setRepeatUnit] = useState<RepeatDropdownValue>(todo?.repeat?.unit ?? "none");
 
   async function handleSubmit(values: TodoFormValues) {
     const title = values.title.trim();
     if (!title) {
       setTitleError("Title is required");
       return;
+    }
+
+    let repeat: RepeatRule | undefined;
+    if (values.repeatUnit !== "none") {
+      const interval = parseInt(values.repeatInterval, 10);
+      if (!Number.isInteger(interval) || interval < 1) {
+        setRepeatIntervalError("Enter a whole number of 1 or more");
+        return;
+      }
+      if (!values.dueDate) {
+        setDueDateError("Repeat requires a due date");
+        return;
+      }
+      repeat = { unit: values.repeatUnit, interval };
     }
 
     setIsSubmitting(true);
@@ -47,6 +70,7 @@ export function TodoForm({ todo, projects, onSubmit }: TodoFormProps) {
         projectId: values.projectId,
         priority: values.priority as Priority,
         dueDate: values.dueDate ? toISODate(values.dueDate) : undefined,
+        repeat,
       });
       pop();
     } catch (error) {
@@ -104,7 +128,31 @@ export function TodoForm({ todo, projects, onSubmit }: TodoFormProps) {
         title="Due Date"
         type={Form.DatePicker.Type.Date}
         defaultValue={todo?.dueDate ? new Date(todo.dueDate) : null}
+        error={dueDateError}
+        onChange={() => setDueDateError(undefined)}
       />
+      <Form.Dropdown
+        id="repeatUnit"
+        title="Repeat"
+        value={repeatUnit}
+        onChange={(value) => setRepeatUnit(value as RepeatDropdownValue)}
+      >
+        <Form.Dropdown.Item value="none" title="Never" icon={Icon.XMarkCircle} />
+        {REPEAT_UNITS.map((unit) => (
+          <Form.Dropdown.Item key={unit} value={unit} title={REPEAT_UNIT_LABELS[unit].plural} icon={Icon.Repeat} />
+        ))}
+      </Form.Dropdown>
+      {repeatUnit !== "none" && (
+        <Form.TextField
+          id="repeatInterval"
+          title="Every"
+          placeholder="1"
+          defaultValue={String(todo?.repeat?.interval ?? 1)}
+          info={`e.g. 2 = every 2 ${REPEAT_UNIT_LABELS[repeatUnit].plural.toLowerCase()}`}
+          error={repeatIntervalError}
+          onChange={() => setRepeatIntervalError(undefined)}
+        />
+      )}
     </Form>
   );
 }

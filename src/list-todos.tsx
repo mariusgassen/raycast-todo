@@ -1,14 +1,17 @@
 import { useMemo, useState } from "react";
-import { Action, ActionPanel, Alert, Color, Icon, Keyboard, List, confirmAlert } from "@raycast/api";
+import { Action, ActionPanel, Alert, Color, Icon, Keyboard, List, confirmAlert, showToast, Toast } from "@raycast/api";
 import { useTodos } from "./hooks/useTodos";
 import { TodoForm, TodoFormSubmitValues } from "./components/TodoForm";
-import { Priority, Project, Todo } from "./lib/types";
+import { Priority, Project, RepeatRule, Todo } from "./lib/types";
 import { PRIORITIES, PRIORITY_COLORS, PRIORITY_ICONS, PRIORITY_LABELS } from "./lib/priority";
 import { DEFAULT_PROJECT_ICON } from "./lib/project-style";
+import { REPEAT_UNITS, REPEAT_UNIT_LABELS, formatRepeatRule } from "./lib/repeat";
 import { formatDueDate, groupTodosByDueDate, isOverdue } from "./lib/date-utils";
 
+const REPEAT_PRESETS: RepeatRule[] = REPEAT_UNITS.map((unit) => ({ unit, interval: 1 }));
+
 export default function ListTodosCommand() {
-  const { todos, projects, isLoading, createTodo, editTodo, toggleTodoCompleted, removeTodo } = useTodos();
+  const { todos, projects, isLoading, createTodo, editTodo, completeTodo, removeTodo } = useTodos();
   const [isShowingDetail, setIsShowingDetail] = useState(false);
 
   const openTodos = useMemo(() => todos.filter((todo) => !todo.completed), [todos]);
@@ -17,6 +20,17 @@ export default function ListTodosCommand() {
 
   async function handleCreate(values: TodoFormSubmitValues) {
     await createTodo(values);
+  }
+
+  async function handleComplete(todo: Todo) {
+    const spawned = await completeTodo(todo.id);
+    if (spawned?.dueDate) {
+      await showToast({
+        style: Toast.Style.Success,
+        title: "Completed",
+        message: `Next occurrence: ${formatDueDate(spawned.dueDate)}`,
+      });
+    }
   }
 
   return (
@@ -49,10 +63,11 @@ export default function ListTodosCommand() {
                     project={projectById.get(todo.projectId)}
                     projects={projects}
                     onToggleDetail={() => setIsShowingDetail((value) => !value)}
-                    onComplete={() => toggleTodoCompleted(todo.id, true)}
+                    onComplete={() => handleComplete(todo)}
                     onDelete={() => removeTodo(todo.id)}
                     onChangePriority={(priority) => editTodo(todo.id, { priority })}
                     onChangeProject={(projectId) => editTodo(todo.id, { projectId })}
+                    onChangeRepeat={(repeat) => editTodo(todo.id, { repeat })}
                     onSubmitEdit={async (values) => editTodo(todo.id, values)}
                     onSubmitCreate={handleCreate}
                   />
@@ -74,6 +89,7 @@ interface TodoListItemProps {
   onDelete: () => void;
   onChangePriority: (priority: Priority) => void;
   onChangeProject: (projectId: string) => void;
+  onChangeRepeat: (repeat: RepeatRule | undefined) => void;
   onSubmitEdit: (values: TodoFormSubmitValues) => Promise<void>;
   onSubmitCreate: (values: TodoFormSubmitValues) => Promise<void>;
 }
@@ -87,6 +103,7 @@ function TodoListItem({
   onDelete,
   onChangePriority,
   onChangeProject,
+  onChangeRepeat,
   onSubmitEdit,
   onSubmitCreate,
 }: TodoListItemProps) {
@@ -100,6 +117,9 @@ function TodoListItem({
   ];
   if (project) {
     accessories.push({ tag: { value: project.name, color: project.color }, tooltip: "Project" });
+  }
+  if (todo.repeat) {
+    accessories.push({ icon: Icon.Repeat, tooltip: formatRepeatRule(todo.repeat) });
   }
   if (todo.dueDate) {
     accessories.push({
@@ -116,6 +136,18 @@ function TodoListItem({
       primaryAction: { title: "Delete", style: Alert.ActionStyle.Destructive },
     });
     if (confirmed) onDelete();
+  }
+
+  async function handleChangeRepeat(repeat: RepeatRule | undefined) {
+    if (repeat && !todo.dueDate) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "No due date set",
+        message: "Add a due date first so the repeat has a date to advance from.",
+      });
+      return;
+    }
+    onChangeRepeat(repeat);
   }
 
   return (
@@ -170,6 +202,21 @@ function TodoListItem({
                 />
               ))}
             </ActionPanel.Submenu>
+            <ActionPanel.Submenu
+              icon={Icon.Repeat}
+              title="Change Repeat"
+              shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}
+            >
+              <Action title="Never" icon={Icon.XMarkCircle} onAction={() => handleChangeRepeat(undefined)} />
+              {REPEAT_PRESETS.map((preset) => (
+                <Action
+                  key={preset.unit}
+                  title={REPEAT_UNIT_LABELS[preset.unit].plural}
+                  icon={Icon.Repeat}
+                  onAction={() => handleChangeRepeat(preset)}
+                />
+              ))}
+            </ActionPanel.Submenu>
           </ActionPanel.Section>
           <ActionPanel.Section>
             <Action.Push
@@ -214,6 +261,9 @@ function TodoDetail({ todo, project }: { todo: Todo; project?: Project }) {
             title="Due Date"
             text={todo.dueDate ? formatDueDate(todo.dueDate) : "No due date"}
           />
+          {todo.repeat && (
+            <List.Item.Detail.Metadata.Label title="Repeats" text={formatRepeatRule(todo.repeat)} icon={Icon.Repeat} />
+          )}
           <List.Item.Detail.Metadata.Separator />
           <List.Item.Detail.Metadata.Label title="Created" text={new Date(todo.createdAt).toLocaleString()} />
         </List.Item.Detail.Metadata>

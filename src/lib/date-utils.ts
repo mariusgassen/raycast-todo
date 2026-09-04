@@ -1,4 +1,4 @@
-import { Todo } from "./types";
+import { RepeatRule, Todo } from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -81,6 +81,45 @@ export function formatDueDate(dueDate: string, now: Date = new Date()): string {
     day: "numeric",
     year: sameYear ? undefined : "numeric",
   });
+}
+
+/**
+ * Advances `dueDate` by one `repeat` interval, then keeps advancing (in case
+ * the todo was overdue by more than one interval) until the result is
+ * strictly after `now`, so completing a stale recurring todo doesn't just
+ * spawn another overdue one.
+ *
+ * Month/year advances use the native `Date#setMonth`/`setFullYear`, which
+ * roll over on day overflow (e.g. Jan 31 + 1 month -> Mar 3) rather than
+ * clamping to the last day of the target month. Accepted as a known
+ * limitation for now.
+ */
+export function getNextOccurrence(dueDate: Date, repeat: RepeatRule, now: Date = new Date()): Date {
+  const today = startOfDay(now);
+  let next = advanceByRepeat(dueDate, repeat);
+  while (startOfDay(next).getTime() <= today.getTime()) {
+    next = advanceByRepeat(next, repeat);
+  }
+  return next;
+}
+
+function advanceByRepeat(date: Date, repeat: RepeatRule): Date {
+  switch (repeat.unit) {
+    case "day":
+      return addDays(date, repeat.interval);
+    case "week":
+      return addDays(date, repeat.interval * 7);
+    case "month": {
+      const result = new Date(date);
+      result.setMonth(result.getMonth() + repeat.interval);
+      return result;
+    }
+    case "year": {
+      const result = new Date(date);
+      result.setFullYear(result.getFullYear() + repeat.interval);
+      return result;
+    }
+  }
 }
 
 // --- Simple DE/EN natural-language due-date parsing (quick-add stretch goal) ---
