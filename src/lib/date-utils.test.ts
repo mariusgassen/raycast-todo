@@ -84,7 +84,7 @@ describe("groupTodosByDueDate", () => {
       todo({ id: "overdue", dueDate: toISODate(new Date(2026, 8, 1)) }),
     ];
 
-    const groups = groupTodosByDueDate(todos);
+    const groups = groupTodosByDueDate(todos, NOW);
 
     expect(groups.map((g) => g.bucket)).toEqual(["overdue", "today", "thisWeek", "later", "noDate"]);
     expect(groups.find((g) => g.bucket === "overdue")?.todos.map((t) => t.id)).toEqual(["overdue"]);

@@ -56,10 +56,13 @@ export interface DueDateGroup<T> {
   todos: T[];
 }
 
-export function groupTodosByDueDate<T extends Pick<Todo, "dueDate">>(todos: T[]): DueDateGroup<T>[] {
+export function groupTodosByDueDate<T extends Pick<Todo, "dueDate">>(
+  todos: T[],
+  now: Date = new Date(),
+): DueDateGroup<T>[] {
   const groups = new Map<DueBucket, T[]>(BUCKET_ORDER.map((bucket) => [bucket, []]));
   for (const todo of todos) {
-    groups.get(getDueBucket(todo))?.push(todo);
+    groups.get(getDueBucket(todo, now))?.push(todo);
   }
   return BUCKET_ORDER.map((bucket) => ({ bucket, title: BUCKET_TITLES[bucket], todos: groups.get(bucket) ?? [] }));
 }
